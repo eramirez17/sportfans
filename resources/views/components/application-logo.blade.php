@@ -1,0 +1,1 @@
+<img src="{{env('APP_URL')}}:8000/img/com.png" width="100px">

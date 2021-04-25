@@ -1,0 +1,176 @@
+<?php
+
+namespace App\Http\Controllers\Seg;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+use App\Models\User;
+use App\Http\Requests\UserStoreRequest;
+use App\Http\Requests\UserUpdateRequest;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Profile;
+
+class userController extends Controller
+{
+    public function __construct(){
+        $this->middleware('auth');
+    }
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        $permission = session('permissions');
+        if (isset($permission['users']['list']) && $permission['users']['list']=== "1") {
+            $profiles = Profile::orderBy('caption','ASC')->pluck('caption','id');
+
+            //obtener los datos del filtro de busqueda
+            $id = $request->get('id');
+            $name = $request->get('name');
+            $email = $request->get('email');
+            $profile_id = $request->get('profile_id');
+            $paginate = ($request->get('paginate')) ? $request->get('paginate') : 10 ;
+
+
+            $users = User::id($id)
+                        ->name($name)
+                        ->email($email)
+                        ->profile_id($profile_id)
+                        ->orderBy('id','desc')
+                        ->paginate($paginate);
+            return view('seg.users.index',compact('users','profiles'));
+        } else {
+            return view('errors.unauthorized');
+        }
+
+        
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        $permission = session('permissions');
+        if (isset($permission['users']['create']) && $permission['users']['create']=== "1") {
+            $profiles = Profile::orderBy('caption','ASC')->pluck('caption','id');
+            return view('seg.users.create',compact('profiles'));
+        } else {
+            return view('errors.unauthorized');
+        }
+
+        
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(UserStoreRequest $request)
+    {
+        if (!($request->password === $request->password_confirmation)) {
+            return back()->with('password','The provided password does not match our records.');
+        }else{
+            $user = new User;
+            $user->name = $request->name;
+            $user->email = $request->email;
+            $user->profile_id = $request->profile_id;
+            $user->password = Hash::make($request->password);
+            $user->save();
+            return redirect()->route('users.show',$user)
+                ->with('info','Registro creado con éxito');        
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        $permission = session('permissions');
+        if (isset($permission['users']['check']) && $permission['users']['check']=== "1") {
+            $user = User::where('id',$id)->first();
+            return view('seg.users.show',compact('user'));
+        } else {
+            return view('errors.unauthorized');
+        }
+
+        
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(User $user)
+    {
+        $permission = session('permissions');
+        if (isset($permission['users']['edit']) && $permission['users']['edit']=== "1") {
+            $profiles = Profile::orderBy('caption','ASC')->pluck('caption','id');
+            return view('seg.users.edit',compact('user','profiles'));
+        } else {
+            return view('errors.unauthorized');
+        }
+
+        
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        if (!($request->password === $request->password_confirmation)) {
+            return back()->with('password','The provided password does not match our records.');
+        }else{
+            $user = User::find($id);
+            if ($request->password === '') {
+                $password = $user->password;
+            }else{
+                $password = Hash::make($request->password);
+            }
+            $user->name = $request->name;
+            $user->email = $request->email;
+            $user->profile_id = $request->profile_id;
+            $user->password = $password;
+            $user->save();
+            return redirect()->route('users.show',compact('user')) 
+            ->with('info','Registro actualizada con éxito');
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        $permission = session('permissions');
+        if (isset($permission['users']['delete']) && $permission['users']['delete']=== "1") {
+            $user = User::find($id)->delete();
+            return back()->with('info','Registro eliminado con éxito');
+        } else {
+            return view('errors.unauthorized');
+        }
+
+         
+    }
+}
